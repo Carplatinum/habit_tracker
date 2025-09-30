@@ -8,7 +8,8 @@ from telegram.ext import (
 )
 from telegram import Update
 from django.core.management.base import BaseCommand
-from telegram_bot.models import TelegramUser, Habit, HabitRecord
+from telegram_bot.models import TelegramUser
+from habits.models import Habit, HabitRecord
 from django.contrib.auth import get_user_model
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -91,8 +92,8 @@ async def add_habit_name_received(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text("Вы не зарегистрированы. Используйте /register.")
         return ConversationHandler.END
 
-    habit = await sync_to_async(Habit.objects.create)(user=django_user, name=habit_name)
-    await update.message.reply_text(f"Привычка '{habit.name}' добавлена с ID {habit.id}")
+    habit = await sync_to_async(Habit.objects.create)(owner=django_user, action=habit_name)
+    await update.message.reply_text(f"Привычка '{habit.action}' добавлена с ID {habit.id}")
     return ConversationHandler.END
 
 
@@ -109,12 +110,12 @@ async def habits_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("Вы не зарегистрированы. Используйте /register.")
         return
 
-    habits = await sync_to_async(list)(Habit.objects.filter(user=django_user))
+    habits = await sync_to_async(list)(Habit.objects.filter(owner=django_user))
     if not habits:
         await update.message.reply_text("Привычек пока нет, добавьте через /add.")
         return
 
-    msg = "Ваши привычки:\n" + "\n".join(f"{h.id}: {h.name}" for h in habits)
+    msg = "Ваши привычки:\n" + "\n".join(f"{h.id}: {h.action}" for h in habits)
     await update.message.reply_text(msg)
 
 
@@ -130,7 +131,7 @@ async def habit_mark(update: Update, context: ContextTypes.DEFAULT_TYPE, done: b
         return
 
     try:
-        habit = await sync_to_async(Habit.objects.get)(id=context.args[0], user=django_user)
+        habit = await sync_to_async(Habit.objects.get)(id=context.args[0], owner=django_user)
     except Habit.DoesNotExist:
         await update.message.reply_text("Привычка с таким ID не найдена.")
         return
@@ -145,7 +146,7 @@ async def habit_mark(update: Update, context: ContextTypes.DEFAULT_TYPE, done: b
         await sync_to_async(record.save)()
 
     status = 'выполнена' if done else 'не выполнена'
-    await update.message.reply_text(f"Привычка '{habit.name}' за сегодня помечена как {status}.")
+    await update.message.reply_text(f"Привычка '{habit.action}' за сегодня помечена как {status}.")
 
 
 async def habit_mark_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -168,12 +169,12 @@ async def habit_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text("Укажите ID привычки для удаления.")
         return
     try:
-        habit = await sync_to_async(Habit.objects.get)(id=context.args[0], user=django_user)
+        habit = await sync_to_async(Habit.objects.get)(id=context.args[0], owner=django_user)
     except Habit.DoesNotExist:
         await update.message.reply_text("Привычка не найдена.")
         return
     await sync_to_async(habit.delete)()
-    await update.message.reply_text(f"Привычка '{habit.name}' удалена.")
+    await update.message.reply_text(f"Привычка '{habit.action}' удалена.")
 
 
 async def habit_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -186,7 +187,7 @@ async def habit_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("Укажите ID привычки для просмотра статистики.")
         return
     try:
-        habit = await sync_to_async(Habit.objects.get)(id=context.args[0], user=django_user)
+        habit = await sync_to_async(Habit.objects.get)(id=context.args[0], owner=django_user)
     except Habit.DoesNotExist:
         await update.message.reply_text("Привычка не найдена.")
         return
@@ -195,7 +196,7 @@ async def habit_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     completed_days = sum(1 for r in records if r.completed)
     percent = (completed_days / total_days * 100) if total_days > 0 else 0
     await update.message.reply_text(
-        f"Статистика по привычке '{habit.name}':\n"
+        f"Статистика по привычке '{habit.action}':\n"
         f"Всего дней: {total_days}\n"
         f"Выполнено: {completed_days}\n"
         f"Процент выполнения: {percent:.1f}%"

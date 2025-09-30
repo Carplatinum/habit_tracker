@@ -44,20 +44,30 @@ class Habit(models.Model):
     )
     is_public = models.BooleanField(default=False, verbose_name='Публичная привычка')
 
+    # Новые поля для задач Celery
+    last_missed = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Дата и время последнего пропуска',
+        help_text='Когда привычка была последний раз пропущена'
+    )
+    last_done = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Дата и время последнего выполнения',
+        help_text='Когда привычка была последний раз выполнена'
+    )
+
     def clean(self):
-        # Нельзя одновременно иметь и вознаграждение и связанную привычку
         if self.reward and self.related_habit:
             raise ValidationError('Одновременно нельзя указать вознаграждение и связанную привычку.')
 
-        # У приятной привычки не может быть вознаграждения и связанной привычки
         if self.is_pleasant and (self.reward or self.related_habit):
             raise ValidationError('У приятной привычки не может быть вознаграждения или связанной привычки.')
 
-        # Время выполнения не больше 120 секунд
         if self.duration_seconds > 120:
             raise ValidationError('Время выполнения не может быть больше 120 секунд.')
 
-        # Периодичность от 1 до 7 дней
         if self.periodicity < 1 or self.periodicity > 7:
             raise ValidationError('Периодичность должна быть от 1 до 7 дней.')
 
@@ -68,3 +78,18 @@ class Habit(models.Model):
         verbose_name = 'Привычка'
         verbose_name_plural = 'Привычки'
         ordering = ['time']
+
+
+class HabitRecord(models.Model):
+    habit = models.ForeignKey(Habit, on_delete=models.CASCADE, verbose_name='Привычка')
+    date = models.DateField(verbose_name='Дата')
+    completed = models.BooleanField(default=False, verbose_name='Выполнено')
+
+    class Meta:
+        unique_together = ('habit', 'date')
+        verbose_name = 'Отметка привычки'
+        verbose_name_plural = 'Отметки привычек'
+
+    def __str__(self):
+        status = 'Выполнено' if self.completed else 'Не выполнено'
+        return f"{self.habit.action} - {self.date}: {status}"

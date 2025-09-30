@@ -36,7 +36,9 @@ def send_habit_reminders():
 @shared_task
 def send_inactivity_reminders():
     threshold_date = timezone.now() - timedelta(days=3)
-    inactive_users = set(Habit.objects.filter(last_done__lt=threshold_date).values_list('owner', flat=True))
+    inactive_users = set(
+        Habit.objects.filter(last_done__lt=threshold_date).values_list('owner', flat=True)
+    )
     for user_id in inactive_users:
         telegram_user = TelegramUser.objects.filter(user_id=user_id).first()
         if telegram_user and telegram_user.chat_id:

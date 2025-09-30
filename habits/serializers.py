@@ -17,6 +17,8 @@ class HabitSerializer(serializers.ModelSerializer):
             'reward',
             'duration_seconds',
             'is_public',
+            'last_missed',
+            'last_done',
         ]
         read_only_fields = ['owner']
 

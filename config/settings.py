@@ -12,7 +12,6 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret')
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1')
 
-# Безопасная обработка ALLOWED_HOSTS
 allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [host for host in allowed_hosts_env.split(',') if host]
 if not ALLOWED_HOSTS:
@@ -53,11 +52,11 @@ MIDDLEWARE = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'habit_tracker_db_utf8',
-        'USER': 'Carplatinum',
-        'PASSWORD': '12Reg369!',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('habit_tracker_db'),
+        'USER': os.getenv('Carplatinum'),
+        'PASSWORD': os.getenv('12Reg369!'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
             'client_encoding': 'UTF8',
         },
@@ -80,7 +79,6 @@ TEMPLATES = [
     },
 ]
 
-# CORS настройки
 cors_origins_env = os.getenv('CORS_ALLOWED_ORIGINS', '')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
 
@@ -131,6 +129,13 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'habits.tasks.send_inactivity_reminders',
         'schedule': crontab(hour=20, minute=0),
     },
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Habit Tracker API',
+    'DESCRIPTION': 'API для трекинга привычек',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
